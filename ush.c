@@ -1,1 +1,94 @@
+#include <string.h>
+
 #include "ush.h"
+
+static ush_cmd cmd_help;
+
+void ush_init(ush* root){
+    if(NULL == root){
+        goto ush_init_exit;
+    }
+    memset(root->buf, 0, USH_MAX_COMMAND_LEN);
+    memset(root->cmds, 0, USH_MAX_CMDS * sizeof (void*));
+    root->cur_cmds = 0;
+    root->cur_bufsz = 0;
+ush_init_exit:;
+}
+
+void ush_reg_cmd(ush* root, ush_cmd* unit){
+    if(NULL == root || NULL == unit){
+        goto ush_reg_cmd_exit;
+    }
+    if(!(root->cur_cmds < USH_MAX_CMDS)){
+        goto ush_reg_cmd_exit;
+    }
+    root->cmds[root->cur_cmds] = unit;
+    root->cur_cmds++;
+
+ush_reg_cmd_exit:;
+}
+
+void ush_cmd_init(ush_cmd* command, char* cmd, ush_cmd_handler handler, char* help){
+    if(NULL == command || NULL == cmd || NULL == handler){
+        goto ush_cmd_init_unit_exit;
+    }
+    strncpy(command->cmd, cmd, USH_MAX_COMMAND_LEN);
+    command->handler = handler;
+    command->len = strnlen(command->cmd, USH_MAX_COMMAND_LEN);
+    command->help = help;
+ush_cmd_init_unit_exit:;
+}
+
+int ush_cmd_prepare_args(ush *root, size_t cmd_id){
+    int rv, was_backslash, was_null;
+    size_t i;
+
+    rv = 0;
+    was_null = 0;
+    was_backslash = 0;
+    if(NULL == root || cmd_id >=  USH_MAX_CMDS){
+        rv = -1;
+        goto ush_cmd_prepare_args_exit;
+    }
+    root->argc = 1;
+    memset(root->argv, 0, sizeof(void*) * USH_MAX_ARGS);
+
+    root->argv[0] = root->buf;
+    for (i = 0; i < root->cur_bufsz; ++i){
+        if(' ' == root->buf[i] && 0 == was_backslash){
+            root->buf[i] = '\0';
+            was_null = 1;
+        }else{
+            if(was_null){
+                root->argv[root->argc] = root->buf + i;
+                root->argc++;
+            }
+            was_null = 0;
+        }
+        was_backslash = root->buf[i] == '\\' ? 1 : 0;
+    }
+ush_cmd_prepare_args_exit:;
+    return rv;
+}
+
+void ush_cmd_process_byte(ush* root, int data){
+    size_t i;
+    if(USH_MAX_COMMAND_LEN == root->cur_bufsz){
+        memcpy(root->buf, &(root->buf[1]), USH_MAX_COMMAND_LEN -1);
+        root->cur_bufsz--;
+    }
+    root->buf[root->cur_bufsz] = (char)(data);
+    root->cur_bufsz++;
+    for(i = 0; i < USH_MAX_CMDS; ++i){
+        if(NULL != root->cmds[i]){
+            if(0 == strncmp(root->cmds[i]->cmd,
+                           ((root->buf) + (root->cur_bufsz - root->cmds[i]->len)),
+                            root->cmds[i]->len)){
+                ush_cmd_prepare_args(root, i);
+                root->cmds[i]->handler(root->argc, root->argv);
+                memset(root->buf, 0, USH_MAX_COMMAND_LEN);
+                root->cur_bufsz = 0;
+            }
+        }
+    }
+}

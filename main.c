@@ -4,85 +4,9 @@
 
 volatile int main_exit;
 
-void nz_shell_init(nz_shell* root){
-    if(NULL == root){
-        goto nz_shell_init_exit;
-    }
-    memset(root->buf, 0, NZ_SHELL_MAX_COMMANDS_LEN);
-    memset(root->cmds, 0, NZ_SHELL_MAX_CMDS * sizeof (void*));
-    root->cur_units = 0;
-    root->cur_bufsz = 0;
-nz_shell_init_exit:;
-}
-
-void nz_shell_reg_cmd(nz_shell* root, nz_sh_cmd* unit){
-    if(NULL == root || NULL == unit){
-        goto nz_shell_reg_cmd_exit;
-    }
-    if(!(root->cur_units < NZ_SHELL_MAX_CMDS)){
-        goto nz_shell_reg_cmd_exit;
-    }
-    root->cmds[root->cur_units] = unit;
-    root->cur_units++;
-
-nz_shell_reg_cmd_exit:;
-}
-
-
-void nz_cmd_init(nz_sh_cmd* unit, char* cmd, nz_cmd_handler handler){
-    if(NULL == unit || NULL == cmd || NULL == handler){
-        goto nz_cmd_init_unit_exit;
-    }
-    strncpy(unit->cmd, cmd, NZ_SHELL_MAX_COMMANDS_LEN);
-    unit->handler = handler;
-    unit->len = strnlen(unit->cmd, NZ_SHELL_MAX_COMMANDS_LEN);
-nz_cmd_init_unit_exit:;
-}
-
-int nz_cmd_prepare_args(nz_shell *root, size_t cmd_id){
-    int rv;
-    char *start;
-
-    rv = 0;
-    if(NULL == root || cmd_id >=  NZ_SHELL_MAX_CMDS){
-        rv = -1;
-        goto nz_cmd_prepare_args_exit;
-    }
-    root->argc = 0;
-    memset(root->argv, 0, sizeof(void*) * NZ_SHELL_MAX_ARGS);
-
-    start = (char*) (root->buf + root->cmds[cmd_id]->len);
-nz_cmd_prepare_args_exit:;
-    return rv;
-}
-
-void nz_cmd_process_byte(nz_shell* root, int data){
-    size_t i;
-    if(NZ_SHELL_MAX_COMMANDS_LEN == root->cur_bufsz){
-        memcpy(root->buf, &(root->buf[1]), NZ_SHELL_MAX_COMMANDS_LEN -1);
-        root->cur_bufsz--;
-    }
-    root->buf[root->cur_bufsz] = (char)(data);
-    root->cur_bufsz++;
-    for(i = 0; i < NZ_SHELL_MAX_CMDS; ++i){
-        if(NULL != root->cmds[i]){
-            if(0 == strncmp(root->cmds[i]->cmd,
-//                            root->buf,
-                           (char*)((void*)(root->buf) + (
-                                       root->cur_bufsz - root->cmds[i]->len)
-                                   ),
-                            root->cmds[i]->len)){
-                nz_cmd_prepare_args(root, i);
-                root->cmds[i]->handler(root->argc, root->argv);
-                memset(root->buf, 0, NZ_SHELL_MAX_COMMANDS_LEN);
-                root->cur_bufsz = 0;
-            }
-        }
-    }
-}
-
-nz_sh_cmd u_led_on, u_led_off, u_led_blink, u_blink, u_period, u_exit;
-nz_shell cmd1;
+ush_cmd u_led_on, u_led_off, u_led_blink, u_blink, u_period,
+        u_exit, u_help;
+ush shell;
 
 unsigned long period, millis_last, millis_cur;
 int do_blink, state;
@@ -117,28 +41,75 @@ void handler_exit(int argc, char* argv[]){
     main_exit = 1;
 }
 
-void setup() {
+void help_single(ush* root, char* name){
+    size_t i;
+
+    i = 0;
+    while(NULL != root->cmds[i] && NULL != root->cmds[i]->cmd){
+        if(0 == strncmp(name, root->cmds[i]->cmd, root->cmds[i]->len)){
+            printf("%s %s;\n",
+                  name,
+                  root->cmds[i]->help ? root->cmds[i]->help : "Usage unknown");
+            return;
+        }
+        ++i;
+    }
+    printf("Error: command '%s' not found!\n", name);
+}
+
+void help_list(ush* root){
+    size_t i;
+    printf("Help:\n");
+    i = 0;
+    while (i < USH_MAX_CMDS){
+        if(NULL != root->cmds[i] && NULL != root->cmds[i]->cmd){
+            printf("%s %s;\n",
+                  root->cmds[i]->cmd,
+                  root->cmds[i]->help ? root->cmds[i]->help : "Usage unknown");
+        }
+        ++i;
+    }
+}
+
+/// Internal function
+void handler_help(int argc, char* argv[]){
+    char *name;
+    size_t i;
+    name = NULL;
+    if(argc == 2 && NULL != argv[1]){
+        name = argv[1];
+        help_single(&shell, name);
+    }else{
+        help_list(&shell);
+    }
+}
+
+void setup(){
   period = 75;
   millis_last = 0;
   do_blink = 0;
-  nz_cmd_init(&u_exit, "exit", handler_exit);
-  nz_cmd_init(&u_led_on, "on", led_on);
-  nz_cmd_init(&u_led_off, "off", led_off);
-  nz_cmd_init(&u_blink, "blink", led_blink);
-  nz_cmd_init(&u_period, "period", handler_period);
-  nz_shell_reg_cmd(&cmd1, &u_led_on);
-  nz_shell_reg_cmd(&cmd1, &u_led_off);
-  nz_shell_reg_cmd(&cmd1, &u_blink);
-  nz_shell_reg_cmd(&cmd1, &u_period);
+  ush_cmd_init(&u_exit, "exit", handler_exit, "Exits an application");
+  ush_cmd_init(&u_led_on, "on", led_on, "Turns off LED");
+  ush_cmd_init(&u_led_off, "off", led_off, "Turns on LED");
+  ush_cmd_init(&u_blink, "blink", led_blink, "dummy blinker");
+  ush_cmd_init(&u_period, "period", handler_period, "Toggles blink period");
+  ush_cmd_init(&u_help, "help", handler_help,
+               "[name] Prints this help or shecific command if given");
+  ush_reg_cmd(&shell, &u_exit);
+  ush_reg_cmd(&shell, &u_led_on);
+  ush_reg_cmd(&shell, &u_led_off);
+  ush_reg_cmd(&shell, &u_blink);
+  ush_reg_cmd(&shell, &u_period);
+  ush_reg_cmd(&shell, &u_help);
 }
 
-int main() {
+int main(){
     int ch;
     main_exit = 0;
 
     setup();
-    while ((ch=getchar()) != EOF) {
-        nz_cmd_process_byte(&cmd1, ch);
+    while ((ch=getchar()) != EOF){
+        ush_cmd_process_byte(&shell, ch);
 //        printf("%c", ch);
         if(main_exit){
             goto my_exit;
