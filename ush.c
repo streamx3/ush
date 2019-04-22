@@ -77,17 +77,22 @@ void ush_cmd_process_byte(ush* root, int data){
         memcpy(root->buf, &(root->buf[1]), USH_MAX_COMMAND_LEN -1);
         root->cur_bufsz--;
     }
-    root->buf[root->cur_bufsz] = (char)(data);
-    root->cur_bufsz++;
-    for(i = 0; i < USH_MAX_CMDS; ++i){
-        if(NULL != root->cmds[i]){
-            if(0 == strncmp(root->cmds[i]->cmd,
-                           ((root->buf) + (root->cur_bufsz - root->cmds[i]->len)),
-                            root->cmds[i]->len)){
-                ush_cmd_prepare_args(root, i);
-                root->cmds[i]->handler(root->argc, root->argv);
-                memset(root->buf, 0, USH_MAX_COMMAND_LEN);
-                root->cur_bufsz = 0;
+    if((int)'\n' != data){
+        root->buf[root->cur_bufsz] = (char)(data);
+        root->cur_bufsz++;
+    }else{
+        for(i = 0; i < root->cur_cmds; ++i){
+            if(NULL != root->cmds[i]){
+                if(0 == strncmp(root->cmds[i]->cmd,
+                                root->buf,
+                                //((root->buf) + (root->cur_bufsz - root->cmds[i]->len) -1),
+                                root->cmds[i]->len)){
+                    ush_cmd_prepare_args(root, i);
+                    root->cmds[i]->handler(root->argc, root->argv);
+                    memset(root->buf, 0, USH_MAX_COMMAND_LEN);
+                    root->cur_bufsz = 0;
+                    break;
+                }
             }
         }
     }
