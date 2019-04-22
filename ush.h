@@ -27,7 +27,8 @@ typedef struct{
 }ush;
 
 void ush_init(ush* root);
-void ush_reg_cmd(ush* root, ush_cmd* unit);
+void ush_reg_cmd(ush* root, ush_cmd* cmd, char* str,
+                 ush_cmd_handler handler, char* help);
 void ush_cmd_init(ush_cmd* unit, char* cmd, ush_cmd_handler handler, char* help);
 int  ush_cmd_prepare_args(ush *root, size_t cmd_id);
 void ush_cmd_process_byte(ush* root, int data);

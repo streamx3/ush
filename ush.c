@@ -15,28 +15,23 @@ void ush_init(ush* root){
 ush_init_exit:;
 }
 
-void ush_reg_cmd(ush* root, ush_cmd* unit){
-    if(NULL == root || NULL == unit){
+void ush_reg_cmd(ush* root, ush_cmd* cmd, char* str,
+                 ush_cmd_handler handler, char* help){
+    if(NULL == root || NULL == cmd || NULL == str || NULL == handler){
         goto ush_reg_cmd_exit;
     }
     if(!(root->cur_cmds < USH_MAX_CMDS)){
         goto ush_reg_cmd_exit;
     }
-    root->cmds[root->cur_cmds] = unit;
+    strncpy(cmd->cmd, str, USH_MAX_COMMAND_LEN);
+    cmd->handler = handler;
+    cmd->len = strnlen(cmd->cmd, USH_MAX_COMMAND_LEN);
+    cmd->help = help;
+
+    root->cmds[root->cur_cmds] = cmd;
     root->cur_cmds++;
 
 ush_reg_cmd_exit:;
-}
-
-void ush_cmd_init(ush_cmd* command, char* cmd, ush_cmd_handler handler, char* help){
-    if(NULL == command || NULL == cmd || NULL == handler){
-        goto ush_cmd_init_unit_exit;
-    }
-    strncpy(command->cmd, cmd, USH_MAX_COMMAND_LEN);
-    command->handler = handler;
-    command->len = strnlen(command->cmd, USH_MAX_COMMAND_LEN);
-    command->help = help;
-ush_cmd_init_unit_exit:;
 }
 
 int ush_cmd_prepare_args(ush *root, size_t cmd_id){

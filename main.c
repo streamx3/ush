@@ -85,22 +85,17 @@ void handler_help(int argc, char* argv[]){
 }
 
 void setup(){
-  period = 75;
-  millis_last = 0;
-  do_blink = 0;
-  ush_cmd_init(&u_exit, "exit", handler_exit, "Exits an application");
-  ush_cmd_init(&u_led_on, "on", led_on, "Turns off LED");
-  ush_cmd_init(&u_led_off, "off", led_off, "Turns on LED");
-  ush_cmd_init(&u_blink, "blink", led_blink, "dummy blinker");
-  ush_cmd_init(&u_period, "period", handler_period, "Toggles blink period");
-  ush_cmd_init(&u_help, "help", handler_help,
-               "[name] Prints this help or shecific command if given");
-  ush_reg_cmd(&shell, &u_exit);
-  ush_reg_cmd(&shell, &u_led_on);
-  ush_reg_cmd(&shell, &u_led_off);
-  ush_reg_cmd(&shell, &u_blink);
-  ush_reg_cmd(&shell, &u_period);
-  ush_reg_cmd(&shell, &u_help);
+    period = 75;
+    millis_last = 0;
+    do_blink = 0;
+    ush_reg_cmd(&shell, &u_exit, "exit", handler_exit, "Exits an application");
+    ush_reg_cmd(&shell, &u_led_on, "on", led_on, "Turns off LED");
+    ush_reg_cmd(&shell, &u_led_off, "off", led_off, "Turns on LED");
+    ush_reg_cmd(&shell, &u_blink, "blink", led_blink, "dummy blinker");
+    ush_reg_cmd(&shell, &u_period, "period", handler_period,
+                "Toggles blink period");
+    ush_reg_cmd(&shell, &u_help, "help", handler_help,
+                "[name] Prints this help or shecific command if given");
 }
 
 int main(){
@@ -110,13 +105,11 @@ int main(){
     setup();
     while ((ch=getchar()) != EOF){
         ush_cmd_process_byte(&shell, ch);
-//        printf("%c", ch);
         if(main_exit){
             goto my_exit;
         }
     }
 
 my_exit:;
-
     return 0;
 }
