@@ -2,8 +2,8 @@
 
 #include "ush.h"
 
-ush_cmd u_led_on, u_led_off, u_led_blink, u_blink, u_period,
-        u_exit, u_help, u_set_opt,
+ush_cmd cmd_led_on, cmd_led_off, cmd_led_blink, cmd_blink, cmd_period,
+        cmd_exit, cmd_help, cmd_set_opt,
         cmd_conf_shell, cmd_exit_conf;
 ush shell_main, shell_conf;
 
@@ -48,6 +48,8 @@ void handler_exit(int argc, char* argv[], void* ush_root){
 //    }
 //}
 
+// TODO add conf handling
+
 int loop_handler(ush* root){
     int ch;
     if((ch = getchar()) == EOF){
@@ -73,11 +75,11 @@ void setup(){
     millis_last = 0;
     do_blink = 0;
     ush_init(&shell_main, printf);
-    ush_reg_cmd(&shell_main, &u_exit, "exit", handler_exit, "Exits an application");
-    ush_reg_cmd(&shell_main, &u_led_on, "on", led_on, "Turns off LED");
-    ush_reg_cmd(&shell_main, &u_led_off, "off", led_off, "Turns on LED");
-    ush_reg_cmd(&shell_main, &u_blink, "blink", led_blink, "dummy blinker");
-    ush_reg_cmd(&shell_main, &u_period, "period", handler_period,
+    ush_reg_cmd(&shell_main, &cmd_exit, "exit", handler_exit, "Exits an application");
+    ush_reg_cmd(&shell_main, &cmd_led_on, "on", led_on, "Turns off LED");
+    ush_reg_cmd(&shell_main, &cmd_led_off, "off", led_off, "Turns on LED");
+    ush_reg_cmd(&shell_main, &cmd_blink, "blink", led_blink, "dummy blinker");
+    ush_reg_cmd(&shell_main, &cmd_period, "period", handler_period,
                 "Toggles blink period");
 
     ush_init(&shell_conf, printf);
@@ -91,7 +93,5 @@ void setup(){
 int main(){
     setup();
     ush_loop(&shell_main, loop_handler);
-
-my_exit:;
     return 0;
 }

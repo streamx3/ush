@@ -9,7 +9,7 @@
 #define USH_MAX_ARGS 16
 
 typedef void (*ush_cmd_handler)(int argc, char* argv[], void* ush_root);
-typedef void (*ush_print_ptr)(char* str, ...);
+typedef int (*ush_print_ptr)(char* str, ...);
 
 typedef struct{
     ush_cmd_handler  handler;
@@ -31,7 +31,7 @@ typedef struct{
 
 typedef int (*ush_loop_handler)(ush* root);
 
-void ush_init(ush* root, ush_print_ptr* print_func);
+void ush_init(ush* root, ush_print_ptr print_func);
 void ush_reg_cmd(ush* root, ush_cmd* cmd, char* str,
                  ush_cmd_handler handler, char* help);
 void ush_cmd_init(ush_cmd* unit, char* cmd, ush_cmd_handler handler, char* help);

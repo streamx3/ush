@@ -8,7 +8,7 @@ static void help_single(ush* root, char* name){
     size_t i;
 
     i = 0;
-    while(NULL != root->cmds[i] && NULL != root->cmds[i]->cmd){
+    while(NULL != root->cmds[i] && '\0' != root->cmds[i]->cmd[0]){
         if(0 == strncmp(name, root->cmds[i]->cmd, root->cmds[i]->len)){
             if(root->print_handler){
                 root->print_handler("%s %s;\n",
@@ -30,7 +30,7 @@ static void help_list(ush* root){
     printf("Help:\n");
     i = 0;
     while (i < USH_MAX_CMDS){
-        if(NULL != root->cmds[i] && NULL != root->cmds[i]->cmd){
+        if(NULL != root->cmds[i] && '\0' != root->cmds[i]->cmd[0]){
             root->print_handler("%s %s;\n",
                   root->cmds[i]->cmd,
                   root->cmds[i]->help ? root->cmds[i]->help : "Usage unknown");
@@ -41,21 +41,19 @@ static void help_list(ush* root){
 
 static void handler_help(int argc, char* argv[], void* ush_root){
     ush* root;
-    char *name;
-    size_t i;
-    name = NULL;
-    if(NULL != ush_root){
-        root = ush_root;
+    if(NULL == ush_root){
+        goto handler_help_exit;
     }
+    root = ush_root;
     if(argc == 2 && NULL != argv[1]){
-        name = argv[1];
-        help_single(root, name);
+        help_single(root, argv[1]);
     }else{
         help_list(root);
     }
+handler_help_exit:;
 }
 
-void ush_init(ush* root, ush_print_ptr* print_func){
+void ush_init(ush* root, ush_print_ptr print_func){
     if(NULL == root){
         goto ush_init_exit;
     }
@@ -159,8 +157,7 @@ void ush_cmd_process_byte(ush* root, int data){
 }
 
 void ush_loop(ush* root, ush_loop_handler fn_get_char){
-    int ch, rv;
-    rv = 0;
+    int ch;
     do{
         ch = fn_get_char(root);
         if(0 != ch){
