@@ -2,113 +2,95 @@
 
 #include "ush.h"
 
-volatile int main_exit;
-
 ush_cmd u_led_on, u_led_off, u_led_blink, u_blink, u_period,
-        u_exit, u_help;
-ush shell;
+        u_exit, u_help, u_set_opt,
+        cmd_conf_shell, cmd_exit_conf;
+ush shell_main, shell_conf;
 
 unsigned long period, millis_last, millis_cur;
 int do_blink, state;
 
-void led_on(int argc, char* argv[]){
+void led_on(int argc, char* argv[], void* ush_root){
   do_blink = 1;
   printf("led_on\n");
   fflush(stdout);
 }
 
-void led_off(int argc, char* argv[]){
+void led_off(int argc, char* argv[], void* ush_root){
   do_blink = 0;
   printf("led_off\n");
   fflush(stdout);
 }
 
-void led_blink(int argc, char* argv[]){
+void led_blink(int argc, char* argv[], void* ush_root){
     do_blink = 1;
     printf("do_blink\n");
     fflush(stdout);
 }
 
-void handler_period(int argc, char* argv[]){
+void handler_period(int argc, char* argv[], void* ush_root){
     period = period == 75 ? 1500 : 75;
     printf("handle_period\n");
     fflush(stdout);
 }
 
-void handler_exit(int argc, char* argv[]){
-    printf("Leaving...\n");
+void handler_exit(int argc, char* argv[], void* ush_root){
+    printf("Leaving main;\n");
     fflush(stdout);
-    main_exit = 1;
+    shell_main.exit = 1;
 }
 
-void help_single(ush* root, char* name){
-    size_t i;
+//void handler_operate_opt(int argc, char* argv[]){
+//    int set;
+//    set = strcmp("set", argv[0]) ? 0 : 1;
+//    if(set && argc != 3 && ){
+//
+//    }
+//}
 
-    i = 0;
-    while(NULL != root->cmds[i] && NULL != root->cmds[i]->cmd){
-        if(0 == strncmp(name, root->cmds[i]->cmd, root->cmds[i]->len)){
-            printf("%s %s;\n",
-                  name,
-                  root->cmds[i]->help ? root->cmds[i]->help : "Usage unknown");
-            return;
-        }
-        ++i;
+int loop_handler(ush* root){
+    int ch;
+    if((ch = getchar()) == EOF){
+        ch = 0;
+        root->exit = 1;
     }
-    printf("Error: command '%s' not found!\n", name);
+    return ch;
 }
 
-void help_list(ush* root){
-    size_t i;
-    printf("Help:\n");
-    i = 0;
-    while (i < USH_MAX_CMDS){
-        if(NULL != root->cmds[i] && NULL != root->cmds[i]->cmd){
-            printf("%s %s;\n",
-                  root->cmds[i]->cmd,
-                  root->cmds[i]->help ? root->cmds[i]->help : "Usage unknown");
-        }
-        ++i;
-    }
+void handler_exit_conf(int argc, char* argv[], void* ush_root){
+    printf("Leaving conf;\n");
+    fflush(stdout);
+    shell_conf.exit = 1;
 }
 
-/// Internal function
-void handler_help(int argc, char* argv[]){
-    char *name;
-    size_t i;
-    name = NULL;
-    if(argc == 2 && NULL != argv[1]){
-        name = argv[1];
-        help_single(&shell, name);
-    }else{
-        help_list(&shell);
-    }
+void handler_conf_shell(int argc, char* argv[], void* ush_root){
+    printf("Configuration shell:\n");
+    ush_loop(&shell_conf, loop_handler);
 }
 
 void setup(){
     period = 75;
     millis_last = 0;
     do_blink = 0;
-    ush_reg_cmd(&shell, &u_exit, "exit", handler_exit, "Exits an application");
-    ush_reg_cmd(&shell, &u_led_on, "on", led_on, "Turns off LED");
-    ush_reg_cmd(&shell, &u_led_off, "off", led_off, "Turns on LED");
-    ush_reg_cmd(&shell, &u_blink, "blink", led_blink, "dummy blinker");
-    ush_reg_cmd(&shell, &u_period, "period", handler_period,
+    ush_init(&shell_main, printf);
+    ush_reg_cmd(&shell_main, &u_exit, "exit", handler_exit, "Exits an application");
+    ush_reg_cmd(&shell_main, &u_led_on, "on", led_on, "Turns off LED");
+    ush_reg_cmd(&shell_main, &u_led_off, "off", led_off, "Turns on LED");
+    ush_reg_cmd(&shell_main, &u_blink, "blink", led_blink, "dummy blinker");
+    ush_reg_cmd(&shell_main, &u_period, "period", handler_period,
                 "Toggles blink period");
-    ush_reg_cmd(&shell, &u_help, "help", handler_help,
-                "[name] Prints this help or shecific command if given");
+
+    ush_init(&shell_conf, printf);
+    ush_reg_cmd(&shell_conf, &cmd_exit_conf, "exit", handler_exit_conf,
+                "Exit the Configuration shell");
+
+    ush_reg_cmd(&shell_main, &cmd_conf_shell, "conf", handler_conf_shell,
+                "Configuration shell");
 }
 
 int main(){
-    int ch;
-    main_exit = 0;
-
     setup();
-    while ((ch=getchar()) != EOF){
-        ush_cmd_process_byte(&shell, ch);
-        if(main_exit){
-            goto my_exit;
-        }
-    }
+    ush_loop(&shell_main, loop_handler);
 
 my_exit:;
     return 0;
