@@ -7,6 +7,8 @@ ush_cmd cmd_led_on, cmd_led_off, cmd_led_blink, cmd_blink, cmd_period,
         cmd_conf_shell, cmd_exit_conf;
 ush shell_main, shell_conf;
 
+ush_var var_time, var_n;
+
 unsigned long period, millis_last, millis_cur;
 int do_blink, state;
 
@@ -40,14 +42,6 @@ void handler_exit(int argc, char* argv[], void* ush_root){
     shell_main.exit = 1;
 }
 
-//void handler_operate_opt(int argc, char* argv[]){
-//    int set;
-//    set = strcmp("set", argv[0]) ? 0 : 1;
-//    if(set && argc != 3 && ){
-//
-//    }
-//}
-
 // TODO add conf handling
 
 int loop_handler(ush* root){
@@ -66,7 +60,6 @@ void handler_exit_conf(int argc, char* argv[], void* ush_root){
 }
 
 void handler_conf_shell(int argc, char* argv[], void* ush_root){
-    printf("Configuration shell:\n");
     ush_loop(&shell_conf, loop_handler);
 }
 
@@ -74,7 +67,8 @@ void setup(){
     period = 75;
     millis_last = 0;
     do_blink = 0;
-    ush_init(&shell_main, printf);
+
+    ush_init(&shell_main, printf, "$ ");
     ush_reg_cmd(&shell_main, &cmd_exit, "exit", handler_exit, "Exits an application");
     ush_reg_cmd(&shell_main, &cmd_led_on, "on", led_on, "Turns off LED");
     ush_reg_cmd(&shell_main, &cmd_led_off, "off", led_off, "Turns on LED");
@@ -82,12 +76,13 @@ void setup(){
     ush_reg_cmd(&shell_main, &cmd_period, "period", handler_period,
                 "Toggles blink period");
 
-    ush_init(&shell_conf, printf);
+    ush_init(&shell_conf, printf, "conf$ ");
     ush_reg_cmd(&shell_conf, &cmd_exit_conf, "exit", handler_exit_conf,
                 "Exit the Configuration shell");
-
     ush_reg_cmd(&shell_main, &cmd_conf_shell, "conf", handler_conf_shell,
                 "Configuration shell");
+    ush_reg_var(&shell_conf, &var_time, "time", S32_T);
+    ush_reg_var(&shell_conf, &var_n, "n", S32_T);
 }
 
 int main(){
